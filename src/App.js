@@ -9,39 +9,33 @@ const DAILY = [
   { id: "budget", label: "記帳", emoji: "💰" },
 ];
 
-const WEEKLY = [
-  { id: "exercise", label: "運動 × 2", emoji: "🏋️", target: 2 },
-  { id: "spanish", label: "西文課 × 1", emoji: "🇪🇸", target: 1 },
-  { id: "social", label: "社交 × 1", emoji: "🤝", target: 1 },
-  { id: "create", label: "創作時間 × 0.5", emoji: "✏️", target: 0.5 },
-];
-
 const MONTHLY_GOALS = [
-  { id: "new_things", label: "Try new things", emoji: "🌟", target: 1 },
-  { id: "lifecoach", label: "Life coach", emoji: "🎯", target: 1 },
+  { id: "new_things", label: "Try new things", emoji: "🌟" },
+  { id: "lifecoach", label: "Life coach", emoji: "🎯" },
+  { id: "dislike_thing", label: "Do one thing I don't like", emoji: "😤" }, // 新增任務
 ];
 
 const YEARLY = [
   { id: "books", label: "Read books", emoji: "📚", target: 6, type: "counter" },
   { id: "articles", label: "Produce articles", emoji: "✍️", target: 6, type: "counter" },
   { id: "movies", label: "Watch movies", emoji: "🎬", target: 12, type: "counter" },
-  { id: "marathon", label: "跑 10K Marathon", emoji: "🏃", done: false },
-  { id: "scuba", label: "潛水", emoji: "🤿", done: false },
-  { id: "ski", label: "滑雪", emoji: "⛷️", done: false },
-  { id: "mountain", label: "爬山", emoji: "⛰️", done: false },
-  { id: "volunteer", label: "做志工", emoji: "💚", done: false },
-  { id: "spanish_b1", label: "西文 B1", emoji: "🇪🇸", done: false },
-  { id: "income2", label: "第 2 收入來源", emoji: "💸", done: false },
-  { id: "invest", label: "投資", emoji: "📈", done: false },
-  { id: "bodyfat", label: "體脂肪 14% ↓", emoji: "💪", done: false },
-  { id: "qlr", label: "4場 QLR", emoji: "🧳", done: false },
-  { id: "ai", label: "AI 提升生產力", emoji: "🤖", done: false },
+  { id: "marathon", label: "跑 10K Marathon", emoji: "🏃" },
+  { id: "scuba", label: "潛水", emoji: "🤿" },
+  { id: "ski", label: "滑雪", emoji: "⛷️" },
+  { id: "mountain", label: "爬山", emoji: "⛰️" },
+  { id: "volunteer", label: "做志工", emoji: "💚" },
+  { id: "spanish_b1", label: "西文 B1", emoji: "🇪🇸" },
+  { id: "income2", label: "第 2 收入來源", emoji: "💸" },
+  { id: "invest", label: "投資", emoji: "📈" },
+  { id: "bodyfat", label: "體脂肪 14% ↓", emoji: "💪" },
+  { id: "qlr", label: "4場 QLR", emoji: "🧳" },
+  { id: "ai", label: "AI 提升生產力", emoji: "🤖" },
 ];
 
 export default function App() {
   const [tab, setTab] = useState("daily");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [dailyHistory, setDailyHistory] = useState({}); // 格式: { "2026-03-10": ["gratitude", "water"] }
+  const [dailyHistory, setDailyHistory] = useState({});
   const [data, setData] = useState({});
   const [yearlyData, setYearlyData] = useState({});
   const [notes, setNotes] = useState({});
@@ -52,144 +46,147 @@ export default function App() {
   useEffect(() => {
     const load = () => {
       try {
-        setDailyHistory(JSON.parse(localStorage.getItem("tracker-dh") || "{}"));
-        setData(JSON.parse(localStorage.getItem("tracker-m") || "{}"));
-        setYearlyData(JSON.parse(localStorage.getItem("tracker-y") || "{}"));
-        setNotes(JSON.parse(localStorage.getItem("tracker-n") || "{}"));
+        setDailyHistory(JSON.parse(localStorage.getItem("t-dh") || "{}"));
+        setData(JSON.parse(localStorage.getItem("t-m") || "{}"));
+        setYearlyData(JSON.parse(localStorage.getItem("t-y") || "{}"));
+        setNotes(JSON.parse(localStorage.getItem("t-n") || "{}"));
       } catch (e) {}
       setLoading(false);
     };
     load();
   }, []);
 
-  const saveDH = (ndh) => { setDailyHistory(ndh); localStorage.setItem("tracker-dh", JSON.stringify(ndh)); };
-  const saveY = (ny) => { setYearlyData(ny); localStorage.setItem("tracker-y", JSON.stringify(ny)); };
-  const saveN = (nn) => { setNotes(nn); localStorage.setItem("tracker-n", JSON.stringify(nn)); };
-  const saveM = (nm) => { setData(nm); localStorage.setItem("tracker-m", JSON.stringify(nm)); };
+  const saveDH = (v) => { setDailyHistory(v); localStorage.setItem("t-dh", JSON.stringify(v)); };
+  const saveM = (v) => { setData(v); localStorage.setItem("t-m", JSON.stringify(v)); };
+  const saveY = (v) => { setYearlyData(v); localStorage.setItem("t-y", JSON.stringify(v)); };
+  const saveN = (v) => { setNotes(v); localStorage.setItem("t-n", JSON.stringify(v)); };
 
-  // 計算連續天數 (Streak)
-  const calculateStreak = (habitId) => {
-    let streak = 0;
-    let curr = new Date();
-    while (true) {
-      const dateStr = curr.toISOString().split('T')[0];
-      if (dailyHistory[dateStr]?.includes(habitId)) {
-        streak++;
-        curr.setDate(curr.getDate() - 1);
-      } else {
-        break;
-      }
+  const getMVal = (m, id) => data[`m${m}_${id}`] || 0;
+  const setMVal = (m, id, v) => saveM({ ...data, [`m${m}_${id}`]: v });
+  
+  const getMNote = (m, id) => notes[`m${m}_${id}`] || "";
+  const setMNote = (m, id, v) => saveN({ ...notes, [`m${m}_${id}`]: v });
+
+  const calculateStreak = (id) => {
+    let s = 0; let c = new Date();
+    for (let i = 0; i < 365; i++) {
+      const d = c.toISOString().split('T')[0];
+      if (dailyHistory[d]?.includes(id)) { s++; c.setDate(c.getDate() - 1); } else break;
     }
-    return streak;
+    return s;
   };
 
-  const toggleDaily = (habitId) => {
-    const currentList = dailyHistory[today] || [];
-    const newList = currentList.includes(habitId) 
-      ? currentList.filter(id => id !== habitId)
-      : [...currentList, habitId];
-    saveDH({ ...dailyHistory, [today]: newList });
-  };
+  if (loading) return null;
 
-  if (loading) return <div style={{ background: "#0f0f13", color: "#fff", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>Loading...</div>;
-
-  const btnS = { width: 32, height: 32, borderRadius: "50%", border: "1px solid #ffffff30", background: "#ffffff10", color: "#f0ede8", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" };
+  const cardStyle = { background: "#fff", padding: 16, borderRadius: 12, marginBottom: 12, border: "1px solid #f0f0f0", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" };
+  const btnStyle = { width: 30, height: 30, borderRadius: "50%", border: "1px solid #ddd", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0f0f13", color: "#f0ede8", fontFamily: "sans-serif", paddingBottom: 60 }}>
+    <div style={{ minHeight: "100vh", background: "#f9f9f9", color: "#333", fontFamily: "-apple-system, sans-serif", paddingBottom: 40 }}>
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%)", padding: "40px 20px 20px" }}>
-        <div style={{ fontSize: 10, letterSpacing: 2, color: "#8b8fa8", marginBottom: 5 }}>2026 LIFE BLUEPRINT</div>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: "bold" }}>年度計畫追蹤</h1>
-        <div style={{ marginTop: 15, display: "flex", gap: 10 }}>
+      <div style={{ background: "#fff", padding: "50px 20px 20px", borderBottom: "1px solid #eee" }}>
+        <div style={{ fontSize: 11, letterSpacing: 1, color: "#999", marginBottom: 4 }}>CHIARA'S 2026</div>
+        <h1 style={{ margin: 0, fontSize: 20, fontWeight: "600" }}>生活追蹤</h1>
+        <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
           {["daily", "monthly", "yearly"].map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
-              padding: "8px 16px", borderRadius: 20, border: "1px solid",
-              borderColor: tab === t ? "#e0c97f" : "#ffffff30",
-              background: tab === t ? "#e0c97f22" : "transparent",
-              color: tab === t ? "#e0c97f" : "#f0ede8"
-            }}>{t === "daily" ? "日/週" : t === "monthly" ? "每月" : "年度"}</button>
+              padding: "6px 16px", borderRadius: 18, border: "1px solid",
+              borderColor: tab === t ? "#333" : "#ddd",
+              background: tab === t ? "#333" : "transparent",
+              color: tab === t ? "#fff" : "#666", fontSize: 13
+            }}>{t === "daily" ? "每日" : t === "monthly" ? "每月" : "年度"}</button>
           ))}
         </div>
       </div>
 
       <div style={{ padding: 20 }}>
+        {/* 每日 */}
         {tab === "daily" && (
           <>
-            <div style={{ background: "#ffffff08", padding: 15, borderRadius: 12, marginBottom: 25 }}>
-                <div style={{ fontSize: 12, color: "#8b8fa8", marginBottom: 10 }}>今日任務達成率</div>
-                <div style={{ height: 6, background: "#333", borderRadius: 3, overflow: "hidden" }}>
-                    <div style={{ width: `${((dailyHistory[today]?.length || 0) / DAILY.length) * 100}%`, height: "100%", background: "#e0c97f", transition: "width 0.3s" }} />
-                </div>
+            <div style={{ ...cardStyle, background: "#f0f0f0", border: "none" }}>
+              <div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>今日進度</div>
+              <div style={{ height: 4, background: "#ddd", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ width: `${((dailyHistory[today]?.length || 0) / DAILY.length) * 100}%`, height: "100%", background: "#333", transition: "0.3s" }} />
+              </div>
             </div>
-
-            <h3 style={{ fontSize: 13, color: "#8b8fa8", marginBottom: 15 }}>DAILY STREAKS 🔥</h3>
             {DAILY.map(h => {
-              const doneToday = dailyHistory[today]?.includes(h.id);
+              const done = dailyHistory[today]?.includes(h.id);
               const streak = calculateStreak(h.id);
               return (
-                <div key={h.id} onClick={() => toggleDaily(h.id)} style={{ 
-                  marginBottom: 12, background: doneToday ? "#e0c97f15" : "#ffffff08", 
-                  padding: "15px", borderRadius: 12, display: "flex", justifyContent: "space-between", 
-                  alignItems: "center", border: "1px solid", borderColor: doneToday ? "#e0c97f40" : "transparent",
-                  transition: "0.2s"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ width: 22, height: 22, borderRadius: "50%", border: "2px solid #e0c97f", background: doneToday ? "#e0c97f" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>
-                        {doneToday && "✓"}
-                    </div>
-                    <span>{h.emoji} {h.label}</span>
+                <div key={h.id} onClick={() => {
+                  const list = dailyHistory[today] || [];
+                  const newList = list.includes(h.id) ? list.filter(i => i !== h.id) : [...list, h.id];
+                  saveDH({ ...dailyHistory, [today]: newList });
+                }} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", borderColor: done ? "#333" : "#f0f0f0" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 18, height: 18, borderRadius: "50%", border: "1px solid #333", background: done ? "#333" : "transparent" }} />
+                    <span style={{ fontSize: 15 }}>{h.emoji} {h.label}</span>
                   </div>
-                  {streak > 0 && (
-                    <span style={{ fontSize: 12, color: "#e0c97f", fontWeight: "bold" }}>
-                      🔥 {streak} 天
-                    </span>
-                  )}
+                  {streak > 0 && <span style={{ fontSize: 12, color: "#999" }}>🔥 {streak}</span>}
                 </div>
               );
             })}
           </>
         )}
 
+        {/* 每月 */}
         {tab === "monthly" && (
-            <div style={{ color: "#8b8fa8", textAlign: "center", marginTop: 40 }}>
-                每月計畫內容已整合至資料庫，請點擊「每月」分頁查看。<br/>
-                (此部分邏輯與前版本相同)
-            </div>
+          <>
+            <select value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value))} style={{ width: "100%", padding: 12, borderRadius: 10, background: "#fff", border: "1px solid #ddd", marginBottom: 20, fontSize: 15 }}>
+              {MONTHS_ZH.map((m, i) => <option key={i} value={i}>{m}</option>)}
+            </select>
+            {MONTHLY_GOALS.map(m => {
+              const val = getMVal(selectedMonth, m.id);
+              const note = getMNote(selectedMonth, m.id);
+              return (
+                <div key={m.id} style={cardStyle}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <span style={{ fontSize: 15 }}>{m.emoji} {m.label}</span>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <button onClick={() => setMVal(selectedMonth, m.id, Math.max(0, val - 1))} style={btnStyle}>-</button>
+                      <span style={{ minWidth: 20, textAlign: "center", fontWeight: "600" }}>{val}</span>
+                      <button onClick={() => setMVal(selectedMonth, m.id, val + 1)} style={btnStyle}>+</button>
+                    </div>
+                  </div>
+                  <input 
+                    placeholder="寫下本月紀錄..." 
+                    value={note} 
+                    onChange={(e) => setMNote(selectedMonth, m.id, e.target.value)}
+                    style={{ width: "100%", background: "transparent", border: "none", borderBottom: "1px solid #eee", color: "#888", fontSize: 13, outline: "none", padding: "4px 0" }} 
+                  />
+                </div>
+              );
+            })}
+          </>
         )}
 
+        {/* 年度 */}
         {tab === "yearly" && (
           <>
             {YEARLY.map(g => {
               const val = yearlyData[g.id] || 0;
               const note = notes[g.id] || "";
               const pct = g.type === "counter" ? Math.min(Math.round((val / g.target) * 100), 100) : 0;
-              
               return (
-                <div key={g.id} style={{ marginBottom: 20, background: "#ffffff08", padding: 15, borderRadius: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <span>{g.emoji} {g.label}</span>
+                <div key={g.id} style={cardStyle}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <span style={{ fontSize: 15 }}>{g.emoji} {g.label}</span>
                     {g.type === "counter" ? (
-                        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                            <button onClick={() => saveY({ ...yearlyData, [g.id]: Math.max(0, val - 1) })} style={btnS}>-</button>
-                            <span style={{ color: "#e0c97f", fontSize: 14 }}>{val}/{g.target}</span>
-                            <button onClick={() => saveY({ ...yearlyData, [g.id]: val + 1 })} style={btnS}>+</button>
-                        </div>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                        <button onClick={() => saveY({ ...yearlyData, [g.id]: Math.max(0, val - 1) })} style={btnStyle}>-</button>
+                        <span style={{ fontSize: 13, fontWeight: "600" }}>{val}/{g.target}</span>
+                        <button onClick={() => saveY({ ...yearlyData, [g.id]: val + 1 })} style={btnStyle}>+</button>
+                      </div>
                     ) : (
-                        <div onClick={() => saveY({ ...yearlyData, [g.id]: !yearlyData[g.id] })} style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid #e0c97f", background: yearlyData[g.id] ? "#e0c97f" : "transparent" }} />
+                      <div onClick={() => saveY({ ...yearlyData, [g.id]: !yearlyData[g.id] })} style={{ width: 18, height: 18, borderRadius: "50%", border: "1px solid #333", background: yearlyData[g.id] ? "#333" : "transparent" }} />
                     )}
                   </div>
                   {g.type === "counter" && (
-                    <div style={{ height: 4, background: "#333", borderRadius: 2, overflow: "hidden", marginBottom: 10 }}>
-                      <div style={{ width: `${pct}%`, height: "100%", background: "#e0c97f" }} />
+                    <div style={{ height: 3, background: "#eee", borderRadius: 2, overflow: "hidden", marginBottom: 10 }}>
+                      <div style={{ width: `${pct}%`, height: "100%", background: "#333" }} />
                     </div>
                   )}
-                  <input 
-                    placeholder="寫下備註..."
-                    value={note}
-                    onChange={(e) => saveN({ ...notes, [g.id]: e.target.value })}
-                    style={{ width: "100%", background: "transparent", border: "none", borderBottom: "1px solid #ffffff20", color: "#8b8fa8", fontSize: 12, outline: "none" }}
-                  />
+                  <input placeholder="備註..." value={note} onChange={(e) => saveN({ ...notes, [g.id]: e.target.value })} style={{ width: "100%", background: "transparent", border: "none", borderBottom: "1px solid #eee", color: "#888", fontSize: 12, outline: "none" }} />
                 </div>
               );
             })}
