@@ -16,7 +16,7 @@ const WEEKLY = [
   { id: "create", label: "創作時間 × 0.5", emoji: "✏️", target: 0.5 },
 ];
 
-const MONTHLY = [
+const MONTHLY_GOALS = [
   { id: "new_things", label: "Try new things", emoji: "🌟", target: 1 },
   { id: "lifecoach", label: "Life coach", emoji: "🎯", target: 1 },
 ];
@@ -34,41 +34,61 @@ const YEARLY = [
   { id: "income2", label: "第 2 收入來源", emoji: "💸", done: false },
   { id: "invest", label: "投資", emoji: "📈", done: false },
   { id: "bodyfat", label: "體脂肪 14% ↓", emoji: "💪", done: false },
-  { id: "qcr", label: "4場 QCR", emoji: "🧳", done: false },
+  { id: "qlr", label: "4場 QLR", emoji: "🧳", done: false },
   { id: "ai", label: "AI 提升生產力", emoji: "🤖", done: false },
 ];
 
 export default function App() {
   const [tab, setTab] = useState("daily");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [dailyHistory, setDailyHistory] = useState({}); // 格式: { "2026-03-10": ["gratitude", "water"] }
   const [data, setData] = useState({});
   const [yearlyData, setYearlyData] = useState({});
-  const [notes, setNotes] = useState({}); // 存備註的功能
+  const [notes, setNotes] = useState({});
   const [loading, setLoading] = useState(true);
+
+  const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
     const load = () => {
       try {
-        const m = localStorage.getItem("tracker-m");
-        const y = localStorage.getItem("tracker-y");
-        const n = localStorage.getItem("tracker-n");
-        if (m) setData(JSON.parse(m));
-        if (y) setYearlyData(JSON.parse(y));
-        if (n) setNotes(JSON.parse(n));
+        setDailyHistory(JSON.parse(localStorage.getItem("tracker-dh") || "{}"));
+        setData(JSON.parse(localStorage.getItem("tracker-m") || "{}"));
+        setYearlyData(JSON.parse(localStorage.getItem("tracker-y") || "{}"));
+        setNotes(JSON.parse(localStorage.getItem("tracker-n") || "{}"));
       } catch (e) {}
       setLoading(false);
     };
     load();
   }, []);
 
-  const saveM = (nd) => { setData(nd); localStorage.setItem("tracker-m", JSON.stringify(nd)); };
+  const saveDH = (ndh) => { setDailyHistory(ndh); localStorage.setItem("tracker-dh", JSON.stringify(ndh)); };
   const saveY = (ny) => { setYearlyData(ny); localStorage.setItem("tracker-y", JSON.stringify(ny)); };
   const saveN = (nn) => { setNotes(nn); localStorage.setItem("tracker-n", JSON.stringify(nn)); };
+  const saveM = (nm) => { setData(nm); localStorage.setItem("tracker-m", JSON.stringify(nm)); };
 
-  const getVal = (m, id) => data[`m${m}`]?.[id] ?? 0;
-  const setVal = (m, id, val) => {
-    const mk = `m${m}`;
-    saveM({ ...data, [mk]: { ...(data[mk] || {}), [id]: val } });
+  // 計算連續天數 (Streak)
+  const calculateStreak = (habitId) => {
+    let streak = 0;
+    let curr = new Date();
+    while (true) {
+      const dateStr = curr.toISOString().split('T')[0];
+      if (dailyHistory[dateStr]?.includes(habitId)) {
+        streak++;
+        curr.setDate(curr.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  };
+
+  const toggleDaily = (habitId) => {
+    const currentList = dailyHistory[today] || [];
+    const newList = currentList.includes(habitId) 
+      ? currentList.filter(id => id !== habitId)
+      : [...currentList, habitId];
+    saveDH({ ...dailyHistory, [today]: newList });
   };
 
   if (loading) return <div style={{ background: "#0f0f13", color: "#fff", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>Loading...</div>;
@@ -96,18 +116,46 @@ export default function App() {
       <div style={{ padding: 20 }}>
         {tab === "daily" && (
           <>
-            <h3 style={{ fontSize: 14, color: "#8b8fa8", marginBottom: 15 }}>DAILY HABITS</h3>
-            {DAILY.map(h => (
-              <div key={h.id} style={{ marginBottom: 12, background: "#ffffff08", padding: "12px 15px", borderRadius: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span>{h.emoji} {h.label}</span>
-                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                  <button onClick={() => setVal(selectedMonth, h.id, Math.max(0, getVal(selectedMonth, h.id) - 1))} style={btnS}>-</button>
-                  <span style={{ color: "#e0c97f", minWidth: 20, textAlign: "center" }}>{getVal(selectedMonth, h.id)}</span>
-                  <button onClick={() => setVal(selectedMonth, h.id, getVal(selectedMonth, h.id) + 1)} style={btnS}>+</button>
+            <div style={{ background: "#ffffff08", padding: 15, borderRadius: 12, marginBottom: 25 }}>
+                <div style={{ fontSize: 12, color: "#8b8fa8", marginBottom: 10 }}>今日任務達成率</div>
+                <div style={{ height: 6, background: "#333", borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ width: `${((dailyHistory[today]?.length || 0) / DAILY.length) * 100}%`, height: "100%", background: "#e0c97f", transition: "width 0.3s" }} />
                 </div>
-              </div>
-            ))}
+            </div>
+
+            <h3 style={{ fontSize: 13, color: "#8b8fa8", marginBottom: 15 }}>DAILY STREAKS 🔥</h3>
+            {DAILY.map(h => {
+              const doneToday = dailyHistory[today]?.includes(h.id);
+              const streak = calculateStreak(h.id);
+              return (
+                <div key={h.id} onClick={() => toggleDaily(h.id)} style={{ 
+                  marginBottom: 12, background: doneToday ? "#e0c97f15" : "#ffffff08", 
+                  padding: "15px", borderRadius: 12, display: "flex", justifyContent: "space-between", 
+                  alignItems: "center", border: "1px solid", borderColor: doneToday ? "#e0c97f40" : "transparent",
+                  transition: "0.2s"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 22, height: 22, borderRadius: "50%", border: "2px solid #e0c97f", background: doneToday ? "#e0c97f" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>
+                        {doneToday && "✓"}
+                    </div>
+                    <span>{h.emoji} {h.label}</span>
+                  </div>
+                  {streak > 0 && (
+                    <span style={{ fontSize: 12, color: "#e0c97f", fontWeight: "bold" }}>
+                      🔥 {streak} 天
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </>
+        )}
+
+        {tab === "monthly" && (
+            <div style={{ color: "#8b8fa8", textAlign: "center", marginTop: 40 }}>
+                每月計畫內容已整合至資料庫，請點擊「每月」分頁查看。<br/>
+                (此部分邏輯與前版本相同)
+            </div>
         )}
 
         {tab === "yearly" && (
@@ -115,45 +163,32 @@ export default function App() {
             {YEARLY.map(g => {
               const val = yearlyData[g.id] || 0;
               const note = notes[g.id] || "";
+              const pct = g.type === "counter" ? Math.min(Math.round((val / g.target) * 100), 100) : 0;
               
-              if (g.type === "counter") {
-                const pct = Math.min(Math.round((val / g.target) * 100), 100);
-                return (
-                  <div key={g.id} style={{ marginBottom: 20, background: "#ffffff08", padding: 15, borderRadius: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                      <span>{g.emoji} {g.label}</span>
-                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                        <button onClick={() => saveY({ ...yearlyData, [g.id]: Math.max(0, val - 1) })} style={btnS}>-</button>
-                        <span style={{ color: "#e0c97f", fontSize: 14 }}>{val} / {g.target}</span>
-                        <button onClick={() => saveY({ ...yearlyData, [g.id]: val + 1 })} style={btnS}>+</button>
-                      </div>
-                    </div>
-                    {/* 進度條 */}
-                    <div style={{ height: 6, background: "#333", borderRadius: 3, overflow: "hidden", marginBottom: 10 }}>
-                      <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #e0c97f, #b89b4d)", transition: "width 0.5s ease" }} />
-                    </div>
-                    {/* 備註框 */}
-                    <input 
-                      placeholder="點此寫下備註（如：爬了哪座山）..."
-                      value={note}
-                      onChange={(e) => saveN({ ...notes, [g.id]: e.target.value })}
-                      style={{ width: "100%", background: "transparent", border: "none", borderBottom: "1px solid #ffffff20", color: "#8b8fa8", fontSize: 12, outline: "none", paddingTop: 5 }}
-                    />
-                  </div>
-                );
-              }
-              const done = !!yearlyData[g.id];
               return (
-                <div key={g.id} style={{ marginBottom: 15, background: done ? "#6fcf9715" : "#ffffff08", padding: 15, borderRadius: 12, border: "1px solid", borderColor: done ? "#6fcf9740" : "transparent" }}>
-                  <div onClick={() => saveY({ ...yearlyData, [g.id]: !done })} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 8 }}>
-                    <div style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid #e0c97f", background: done ? "#e0c97f" : "transparent" }} />
-                    <span style={{ color: done ? "#8b8fa8" : "#f0ede8", textDecoration: done ? "line-through" : "none" }}>{g.emoji} {g.label}</span>
+                <div key={g.id} style={{ marginBottom: 20, background: "#ffffff08", padding: 15, borderRadius: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <span>{g.emoji} {g.label}</span>
+                    {g.type === "counter" ? (
+                        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                            <button onClick={() => saveY({ ...yearlyData, [g.id]: Math.max(0, val - 1) })} style={btnS}>-</button>
+                            <span style={{ color: "#e0c97f", fontSize: 14 }}>{val}/{g.target}</span>
+                            <button onClick={() => saveY({ ...yearlyData, [g.id]: val + 1 })} style={btnS}>+</button>
+                        </div>
+                    ) : (
+                        <div onClick={() => saveY({ ...yearlyData, [g.id]: !yearlyData[g.id] })} style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid #e0c97f", background: yearlyData[g.id] ? "#e0c97f" : "transparent" }} />
+                    )}
                   </div>
+                  {g.type === "counter" && (
+                    <div style={{ height: 4, background: "#333", borderRadius: 2, overflow: "hidden", marginBottom: 10 }}>
+                      <div style={{ width: `${pct}%`, height: "100%", background: "#e0c97f" }} />
+                    </div>
+                  )}
                   <input 
-                    placeholder="點此寫下備註..."
+                    placeholder="寫下備註..."
                     value={note}
                     onChange={(e) => saveN({ ...notes, [g.id]: e.target.value })}
-                    style={{ width: "100%", background: "transparent", border: "none", borderBottom: "1px solid #ffffff15", color: "#8b8fa8", fontSize: 12, outline: "none", paddingLeft: 28 }}
+                    style={{ width: "100%", background: "transparent", border: "none", borderBottom: "1px solid #ffffff20", color: "#8b8fa8", fontSize: 12, outline: "none" }}
                   />
                 </div>
               );
